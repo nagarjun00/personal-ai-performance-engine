@@ -1,7 +1,6 @@
 from datetime import date
 
 from core.models.skill import Skill
-from core.models.coding_session import CodingSession
 from core.engine.skill_engine import SkillEngine
 
 from repository.in_memory_repository import InMemorySkillRepository
@@ -9,6 +8,9 @@ from repository.in_memory_repository import InMemorySkillRepository
 from core.scoring.skill_scoring import SkillScorer
 from core.decay.decay_policy import DecayPolicy
 from core.prioritization.priority_calculator import PriorityCalculator
+
+from core.analytics.skill_analytics import SkillAnalytics
+from services.multi_day_simulator import MultiDaySimulator
 
 
 def main():
@@ -21,7 +23,7 @@ def main():
     repo.save_skill(python_skill)
     repo.save_skill(algo_skill)
 
-    # Inject dependencies (Strategy Injection)
+    # Inject dependencies
     engine = SkillEngine(
         repository=repo,
         scorer=SkillScorer(),
@@ -29,35 +31,33 @@ def main():
         priority_calculator=PriorityCalculator(),
     )
 
-    # Simulate session
-    session = CodingSession(
+    # Run deterministic 30-day simulation
+    simulator = MultiDaySimulator(engine)
+
+    simulator.run(
         skill_name="Algorithms",
-        difficulty=3,
-        correctness=1,
-        retries=1,
-        ideal_time=60,
-        actual_time=50,
-        session_date=date.today(),
+        start_date=date.today(),
+        number_of_days=30,
     )
 
-    engine.process_session(session)
+    # Analytics
+    analytics = SkillAnalytics(repo, SkillScorer())
 
-    #For Verification
     print("\nSession History for Algorithms:")
-    sessions = repo.get_sessions_by_skill("Algorithms")
-    print(f"Total Sessions: {len(sessions)}")
-
-    # Apply decay
-    engine.apply_decay_to_all(date.today())
-
-    # Get focus
-    focus = engine.get_daily_focus()
+    print("Total Sessions:", analytics.total_sessions("Algorithms"))
 
     print("\nCurrent Skills:")
     for skill in repo.list_skills():
         print(f"{skill.name}: {round(skill.strength, 2)}")
 
+    focus = engine.get_daily_focus()
     print(f"\nToday's Focus: {focus.name}")
+
+    print("\nAdvanced Metrics:")
+    print("Consistency:", round(analytics.consistency_score("Algorithms"), 3))
+    print("Recent Avg Delta:", round(analytics.recent_average_delta("Algorithms"), 2))
+    print("Momentum:", round(analytics.momentum_score("Algorithms"), 2))
+    print("Volatility:", round(analytics.volatility("Algorithms"), 2))
 
 
 if __name__ == "__main__":
