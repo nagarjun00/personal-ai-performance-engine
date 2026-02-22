@@ -10,20 +10,22 @@ from core.decay.decay_policy import DecayPolicy
 from core.prioritization.priority_calculator import PriorityCalculator
 
 from core.analytics.skill_analytics import SkillAnalytics
-from services.multi_day_simulator import MultiDaySimulator
+from services.strategic_simulator import StrategicSimulator
 
 
 def main():
     repo = InMemorySkillRepository()
 
-    # Create skills
-    python_skill = Skill(name="Python", strength=50, role_weight=1.5)
-    algo_skill = Skill(name="Algorithms", strength=30, role_weight=2.0)
+    # -----------------------------
+    # Create Multiple Skills
+    # -----------------------------
+    repo.save_skill(Skill(name="Python", strength=50, role_weight=1.5))
+    repo.save_skill(Skill(name="Algorithms", strength=30, role_weight=2.0))
+    repo.save_skill(Skill(name="SystemDesign", strength=20, role_weight=1.8))
 
-    repo.save_skill(python_skill)
-    repo.save_skill(algo_skill)
-
-    # Inject dependencies
+    # -----------------------------
+    # Inject Dependencies
+    # -----------------------------
     engine = SkillEngine(
         repository=repo,
         scorer=SkillScorer(),
@@ -31,33 +33,39 @@ def main():
         priority_calculator=PriorityCalculator(),
     )
 
-    # Run deterministic 30-day simulation
-    simulator = MultiDaySimulator(engine)
+    # -----------------------------
+    # Run Closed-Loop Strategic Simulation
+    # -----------------------------
+    simulator = StrategicSimulator(engine)
 
     simulator.run(
-        skill_name="Algorithms",
         start_date=date.today(),
-        number_of_days=30,
+        number_of_days=60,
     )
 
-    # Analytics
-    analytics = SkillAnalytics(repo, SkillScorer())
-
-    print("\nSession History for Algorithms:")
-    print("Total Sessions:", analytics.total_sessions("Algorithms"))
-
-    print("\nCurrent Skills:")
+    # -----------------------------
+    # Display Final Results
+    # -----------------------------
+    print("\nFinal Skill Strengths:")
     for skill in repo.list_skills():
         print(f"{skill.name}: {round(skill.strength, 2)}")
 
     focus = engine.get_daily_focus()
-    print(f"\nToday's Focus: {focus.name}")
+    print(f"\nCurrent Highest Priority Skill: {focus.name}")
 
-    print("\nAdvanced Metrics:")
-    print("Consistency:", round(analytics.consistency_score("Algorithms"), 3))
-    print("Recent Avg Delta:", round(analytics.recent_average_delta("Algorithms"), 2))
-    print("Momentum:", round(analytics.momentum_score("Algorithms"), 2))
-    print("Volatility:", round(analytics.volatility("Algorithms"), 2))
+    # -----------------------------
+    # Analytics
+    # -----------------------------
+    analytics = SkillAnalytics(repo, SkillScorer())
+
+    print("\nAnalytics Summary:")
+    for skill in repo.list_skills():
+        print(f"\n--- {skill.name} ---")
+        print("Total Sessions:", analytics.total_sessions(skill.name))
+        print("Consistency:", round(analytics.consistency_score(skill.name), 3))
+        print("Average Delta:", round(analytics.average_delta(skill.name), 2))
+        print("Momentum:", round(analytics.momentum_score(skill.name), 2))
+        print("Volatility:", round(analytics.volatility(skill.name), 2))
 
 
 if __name__ == "__main__":
